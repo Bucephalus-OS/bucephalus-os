@@ -1,0 +1,35 @@
+#!/bin/bash
+# Auto live-build configuration helper
+# Place in repo root as `auto/config` and run as a normal user (no sudo):
+#   ./auto/config
+# After this completes, run the build as root:
+#   sudo lb build
+
+set -euo pipefail
+
+HERE=$(cd "$(dirname "$0")" && pwd)
+REPO_ROOT=$(cd "$HERE/.." && pwd)
+
+echo "Running live-build configuration from: $REPO_ROOT"
+cd "$REPO_ROOT"
+
+echo "Creating live-build configuration (this runs lb config as non-root)..."
+lb config \
+  --mode debian \
+  --distribution sid \
+  --architecture amd64 \
+  --archive-areas "main contrib non-free non-free-firmware" \
+  --bootappend-live "boot=live components persistence" \
+  --linux-flavours amd64 \
+  --mirror-bootstrap http://deb.debian.org/debian/ \
+  --mirror-binary http://deb.debian.org/debian/ \
+  --debian-installer-gui true
+
+echo
+echo "live-build configuration written into ./config"
+echo "Next steps:"
+echo "  1) Verify or edit package lists in config/package-lists/"
+echo "  2) Make hooks executable: chmod +x config/hooks/live/*"
+echo "  3) Start build (requires sudo): sudo lb build 2>&1 | tee build.log"
+
+exit 0

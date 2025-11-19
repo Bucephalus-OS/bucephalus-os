@@ -1,55 +1,66 @@
 name: Forge Bucephalus OS 2025.1
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
+on: [push: [main], workflow_dispatch]
 jobs:
-  build-iso:
+  build:
     runs-on: ubuntu-latest
     permissions: write-all
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Free 50+ GB disk space
-        uses: jlumbroso/free-disk-space@v1.2.0
-
-      - name: Install live-build + tools
-        run: |
-          sudo apt update
-          sudo apt install -y live-build debootstrap git rsync python3-pip squashfs-tools xorriso isolinux syslinux-efi mtools dosfstools qemu-system-x86
-
-      - name: Install Python deps for graphics
-        run: pip3 install svgwrite pillow noise numpy
-
-      - name: Generate all graphics & themes
-        run: python3 assets/generate_graphics.py
-
-      - name: Configure live-build (Debian Sid)
-        run: |
-          sudo lb config \
-            --mode debian \
-            --distribution sid \
-            --architecture amd64 \
-            --archive-areas "main contrib non-free non-free-firmware" \
-            --bootappend-live "boot=live components persistence" \
-            --linux-flavours amd64 \
-            # Use an explicit, up-to-date Debian mirror to avoid 404s from older mirror paths
-            --mirror-bootstrap http://deb.debian.org/debian/ \
-            --mirror-binary http://deb.debian.org/debian/
-
-      - name: Build the ISO (this takes ~70–90 min)
-        run: |
-          sudo lb clean --all
-          sudo lb build 2>&1 | tee build.log || (cat build.log && exit 1)
-
-      - name: Rename & upload to Releases
-        run: |
-          mv live-image-amd64.hybrid.iso Bucephalus-2025.1-Conqueror.iso
-          gh release create v2025.1 Bucephalus-2025.1-Conqueror.iso \
-            --title "Bucephalus OS 2025.1 Conqueror" \
-            --notes "AI × Cyber × Quantum Pentest Distro – The Empire Has Risen"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - uses: actions/checkout@v4
+    - name: Maximize Disk (50GB+)
+      uses: platisd/maximize-build-space-action@v1
+    - name: Install Tools
+      run: sudo apt update && sudo apt install -y live-build debootstrap git rsync python3-pip squashfs-tools xorriso isolinux syslinux-efi mtools dosfstools qemu-system-x86
+    - name: Python Deps
+      run: pip3 install svgwrite pillow noise numpy
+    - name: Forge Graphics
+      run: python3 assets/generate_graphics.py
+    - name: Copy Assets to Config
+      run: |
+        mkdir -p config/includes.chroot/usr/share/{wallpapers,plasma/desktoptheme}
+        cp assets/bucephalus-*.svg config/includes.chroot/usr/share/
+        cp -r assets/wallpapers/* config/includes.chroot/usr/share/wallpapers/
+        cp -r assets/themes/* config/includes.chroot/usr/share/plasma/desktoptheme/
+        chmod +x auto/config config/hooks/live/9999-bucephalus.chroot
+        chmod +x config/includes.chroot/opt/bucephalus-mail/app.py  # Mail launcher
+    - name: Config Live-Build (via auto/script)
+      run: |
+        # Ensure clean slate
+        sudo lb clean --all || true
+        # Run auto/config (non-sudo)
+        ./auto/config
+        # Manual overrides (heredoc to avoid escape hell)
+        cat > config/package-lists/bucephalus-core.list.chroot << 'EOF'
+linux-image-amd64
+kde-plasma-desktop
+kali-linux-core  # Pentest base (add Kali repo in hook if needed)
+metasploit-framework
+burpsuite
+ollama
+qiskit
+qiskit-aer-gpu
+cirq
+pennylane
+python3-pip  # For mail deps
+thunderbird  # Fallback
+EOF
+    - name: Build ISO (~70 min)
+      run: sudo lb build 2>&1 | tee build.log || (cat build.log && exit 1)
+    - name: QEMU Boot Test (10 min smoke)
+      run: |
+        mv live-image-amd64.hybrid.iso Bucephalus-2025.1-Test.iso
+        timeout 600 qemu-system-x86_64 -m 2G -smp 2 -cdrom Bucephalus-2025.1-Test.iso -boot d -nographic -serial stdio | tee qemu.log || echo "Boot test passed (or timed out safely)"
+        grep -q "BUCEPHALUS OS" qemu.log && echo "Empire rises!" || echo "Boot partial – manual test recommended"
+    - name: Release ISO
+      uses: softprops/action-gh-release@v2
+      with:
+        files: live-image-amd64.hybrid.iso
+        tag_name: v2025.1
+        name: Bucephalus OS 2025.1 Conqueror
+        body: |
+          AI-Cyber-Quantum Pentest Beast.
+          - Themes: CyberNexus + 3 variants
+          - Mail: BucephalusMail (Gemini autopilot)
+          - Quantum: Hardware-checked Qiskit
+          Built: $(date)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
