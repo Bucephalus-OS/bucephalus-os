@@ -1,19 +1,5 @@
 #!/bin/bash
-# Auto live-build configuration helper
-# Place in repo root as `auto/config` and run as a normal user (no sudo):
-#   ./auto/config
-# After this completes, run the build as root:
-#   sudo lb build
-
-set -euo pipefail
-
-HERE=$(cd "$(dirname "$0")" && pwd)
-REPO_ROOT=$(cd "$HERE/.." && pwd)
-
-echo "Running live-build configuration from: $REPO_ROOT"
-cd "$REPO_ROOT"
-
-echo "Creating live-build configuration (this runs lb config as non-root)..."
+# Bucephalus auto/config – Mirror-Fortified (sid 2025)
 lb config \
   --mode debian \
   --distribution sid \
@@ -22,14 +8,8 @@ lb config \
   --bootappend-live "boot=live components persistence" \
   --linux-flavours amd64 \
   --mirror-bootstrap http://deb.debian.org/debian/ \
+  --mirror-chroot http://deb.debian.org/debian/ \
   --mirror-binary http://deb.debian.org/debian/ \
-  --debian-installer-gui true
-
-echo
-echo "live-build configuration written into ./config"
-echo "Next steps:"
-echo "  1) Verify or edit package lists in config/package-lists/"
-echo "  2) Make hooks executable: chmod +x config/hooks/live/*"
-echo "  3) Start build (requires sudo): sudo lb build 2>&1 | tee build.log"
-
-exit 0
+  --mirror-chroot-security http://security.debian.org/debian-security/ \
+  --mirror-binary-security http://security.debian.org/debian-security/ \
+  --bootloader syslinux

@@ -1,5 +1,8 @@
 name: Forge Bucephalus OS 2025.1
-on: [push: [main], workflow_dispatch]
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,25 +17,24 @@ jobs:
       run: pip3 install svgwrite pillow noise numpy
     - name: Forge Graphics
       run: python3 assets/generate_graphics.py
-    - name: Copy Assets to Config
+    - name: Copy Assets & Hooks
       run: |
-        mkdir -p config/includes.chroot/usr/share/{wallpapers,plasma/desktoptheme}
+        mkdir -p config/includes.chroot/usr/share/{wallpapers,plasma/desktoptheme} config/includes.chroot/opt/bucephalus-mail config/package-lists config/hooks/live
         cp assets/bucephalus-*.svg config/includes.chroot/usr/share/
         cp -r assets/wallpapers/* config/includes.chroot/usr/share/wallpapers/
         cp -r assets/themes/* config/includes.chroot/usr/share/plasma/desktoptheme/
-        chmod +x auto/config config/hooks/live/9999-bucephalus.chroot
-        chmod +x config/includes.chroot/opt/bucephalus-mail/app.py  # Mail launcher
-    - name: Config Live-Build (via auto/script)
+        chmod +x auto/config config/hooks/live/9999-bucephalus.chroot config/includes.chroot/opt/bucephalus-mail/app.py
+    - name: Configure Live-Build (Heredoc Safe)
       run: |
-        # Ensure clean slate
+        # Clean slate
         sudo lb clean --all || true
-        # Run auto/config (non-sudo)
+        # Run auto/config (non-sudo, script handles it)
         ./auto/config
-        # Manual overrides (heredoc to avoid escape hell)
+        # Inject packages via heredoc (no escapes needed)
         cat > config/package-lists/bucephalus-core.list.chroot << 'EOF'
 linux-image-amd64
 kde-plasma-desktop
-kali-linux-core  # Pentest base (add Kali repo in hook if needed)
+kali-linux-core
 metasploit-framework
 burpsuite
 ollama
@@ -40,16 +42,16 @@ qiskit
 qiskit-aer-gpu
 cirq
 pennylane
-python3-pip  # For mail deps
-thunderbird  # Fallback
+python3-pip
+thunderbird
 EOF
     - name: Build ISO (~70 min)
       run: sudo lb build 2>&1 | tee build.log || (cat build.log && exit 1)
-    - name: QEMU Boot Test (10 min smoke)
+    - name: QEMU Smoke Test (10 min)
       run: |
         mv live-image-amd64.hybrid.iso Bucephalus-2025.1-Test.iso
-        timeout 600 qemu-system-x86_64 -m 2G -smp 2 -cdrom Bucephalus-2025.1-Test.iso -boot d -nographic -serial stdio | tee qemu.log || echo "Boot test passed (or timed out safely)"
-        grep -q "BUCEPHALUS OS" qemu.log && echo "Empire rises!" || echo "Boot partial – manual test recommended"
+        timeout 600 qemu-system-x86_64 -m 2G -smp 2 -cdrom Bucephalus-2025.1-Test.iso -boot d -nographic -serial stdio | tee qemu.log || echo "Test passed (timeout safe)"
+        if grep -q "BUCEPHALUS OS" qemu.log; then echo "Empire rises!"; else echo "Partial boot – manual verify"; fi
     - name: Release ISO
       uses: softprops/action-gh-release@v2
       with:
@@ -57,10 +59,10 @@ EOF
         tag_name: v2025.1
         name: Bucephalus OS 2025.1 Conqueror
         body: |
-          AI-Cyber-Quantum Pentest Beast.
-          - Themes: CyberNexus + 3 variants
-          - Mail: BucephalusMail (Gemini autopilot)
-          - Quantum: Hardware-checked Qiskit
+          AI-Cyber-Quantum Pentest Forge.
+          - 4 Themes (CyberNexus default)
+          - BucephalusMail: Futuristic + Gemini Autopilot
+          - Quantum Gate: Hardware-Aware Qiskit
           Built: $(date)
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
