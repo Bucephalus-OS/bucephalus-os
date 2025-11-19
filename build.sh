@@ -8,7 +8,15 @@ pip3 install --user svgwrite pillow noise numpy
 
 python3 assets/generate_graphics.py
 
-sudo lb config --mode debian --distribution sid --architecture amd64 --archive-areas "main contrib non-free non-free-firmware" --bootappend-live "boot=live components persistence"
+sudo lb config \
+	--mode debian \
+	--distribution sid \
+	--architecture amd64 \
+	--archive-areas "main contrib non-free non-free-firmware" \
+	--bootappend-live "boot=live components persistence" \
+	--linux-flavours amd64 \
+	--mirror-bootstrap http://deb.debian.org/debian/ \
+	--mirror-binary http://deb.debian.org/debian/
 
 sudo lb build
 

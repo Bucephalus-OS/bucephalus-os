@@ -35,7 +35,10 @@ jobs:
             --architecture amd64 \
             --archive-areas "main contrib non-free non-free-firmware" \
             --bootappend-live "boot=live components persistence" \
-            --linux-flavours amd64
+            --linux-flavours amd64 \
+            # Use an explicit, up-to-date Debian mirror to avoid 404s from older mirror paths
+            --mirror-bootstrap http://deb.debian.org/debian/ \
+            --mirror-binary http://deb.debian.org/debian/
 
       - name: Build the ISO (this takes ~70–90 min)
         run: |
