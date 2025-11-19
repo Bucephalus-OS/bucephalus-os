@@ -1,0 +1,52 @@
+name: Forge Bucephalus OS 2025.1
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-iso:
+    runs-on: ubuntu-latest
+    permissions: write-all
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Free 50+ GB disk space
+        uses: jlumbroso/free-disk-space@v1.2.0
+
+      - name: Install live-build + tools
+        run: |
+          sudo apt update
+          sudo apt install -y live-build debootstrap git rsync python3-pip squashfs-tools xorriso isolinux syslinux-efi mtools dosfstools qemu-system-x86
+
+      - name: Install Python deps for graphics
+        run: pip3 install svgwrite pillow noise numpy
+
+      - name: Generate all graphics & themes
+        run: python3 assets/generate_graphics.py
+
+      - name: Configure live-build (Debian Sid)
+        run: |
+          sudo lb config \
+            --mode debian \
+            --distribution sid \
+            --architecture amd64 \
+            --archive-areas "main contrib non-free non-free-firmware" \
+            --bootappend-live "boot=live components persistence" \
+            --linux-flavours amd64
+
+      - name: Build the ISO (this takes ~70–90 min)
+        run: |
+          sudo lb clean --all
+          sudo lb build 2>&1 | tee build.log || (cat build.log && exit 1)
+
+      - name: Rename & upload to Releases
+        run: |
+          mv live-image-amd64.hybrid.iso Bucephalus-2025.1-Conqueror.iso
+          gh release create v2025.1 Bucephalus-2025.1-Conqueror.iso \
+            --title "Bucephalus OS 2025.1 Conqueror" \
+            --notes "AI × Cyber × Quantum Pentest Distro – The Empire Has Risen"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

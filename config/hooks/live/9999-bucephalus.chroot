@@ -1,0 +1,27 @@
+#!/bin/bash
+echo "BUCEPHALUS OS – THE EMPIRE HAS RISEN" > /etc/motd
+
+# Apply theme
+mkdir -p /home/live/.local/share/plasma/desktoptheme
+cp -r /usr/share/plasma/desktoptheme/CyberNexus /home/live/.local/share/plasma/desktoptheme/ || true
+
+# Warm AI
+ollama serve &
+sleep 20
+ollama pull llama3.2:latest &
+
+# Install BucephalusMail dependencies
+pip3 install requests pillow --break-system-packages || true#!/bin/bash
+echo "BUCEPHALUS OS – THE EMPIRE HAS RISEN" > /etc/motd
+
+# Apply theme
+mkdir -p /home/live/.local/share/plasma/desktoptheme
+cp -r /usr/share/plasma/desktoptheme/CyberNexus /home/live/.local/share/plasma/desktoptheme/ || true
+
+# Warm AI
+ollama serve &
+sleep 20
+ollama pull llama3.2:latest &
+
+# Install BucephalusMail dependencies
+pip3 install requests pillow --break-system-packages || true

@@ -1,0 +1,20 @@
+# List of core packages for Bucephalus OS
+linux-image-amd64
+kali-linux-large
+parrot-tools-full
+metasploit-framework
+burp-suite
+ollama
+open-webui
+pentestgpt
+xbow-ai
+hackgpt-enterprise
+garak
+qiskit
+qiskit-aer-gpu
+cirq
+pennylane
+pytket
+thunderbird
+kde-plasma-desktop
+task-kde-desktop
